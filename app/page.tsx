@@ -14,6 +14,7 @@ import bg_circle from "@assets/img/bg-01.svg";
 import logo from "@assets/img/logo.svg";
 import logo_l from "@assets/img/logo_l.svg";
 import logo_r from "@assets/img/logo_r.svg";
+import ball from "@assets/img/ball.svg";
 const navItems = [
   { label: "Home", active: true },
   { label: "Problem", active: false },
@@ -22,6 +23,11 @@ const navItems = [
   { label: "Participant", active: false },
   { label: "Ecosystem", active: false },
 ];
+
+interface TextDataType {
+  trigger: any;
+  scrub: number;
+}
 
 const glowingOrbs = [
   {
@@ -107,19 +113,52 @@ const architectureSteps = [
     top: "top-[5285px]",
   },
 ];
+
+const cardInfoSteps = [
+  {
+    title: "For Institutions & Funds",
+    description: "A Framework for Compliance and Scale.",
+    btn_text: "Schedule An Enterprise Demo",
+    info: " Stop building brittle infrastructure. Plug your proprietary models into Neberu. Move from an untrusted black box to a fully auditable, compliant, and scalable system. Manage risk, ensure compliance, and deploy AI-driven strategies with confidence.",
+    img_src:
+      "https://c.animaapp.com/mi7lh0u1WhAn7g/img/9a8165ba6b56f173d96bb229323b4097-1.png",
+  },
+  {
+    title: "For Institutions & Funds",
+    description: "A Framework for Compliance and Scale.",
+    btn_text: "Schedule An Enterprise Demo",
+    info: " Stop building brittle infrastructure. Plug your proprietary models into Neberu. Move from an untrusted black box to a fully auditable, compliant, and scalable system. Manage risk, ensure compliance, and deploy AI-driven strategies with confidence.",
+    img_src:
+      "https://c.animaapp.com/mi7lh0u1WhAn7g/img/9a8165ba6b56f173d96bb229323b4097-1.png",
+  },
+  {
+    title: "For Institutions & Funds",
+    description: "A Framework for Compliance and Scale.",
+    btn_text: "Schedule An Enterprise Demo",
+    info: " Stop building brittle infrastructure. Plug your proprietary models into Neberu. Move from an untrusted black box to a fully auditable, compliant, and scalable system. Manage risk, ensure compliance, and deploy AI-driven strategies with confidence.",
+    img_src:
+      "https://c.animaapp.com/mi7lh0u1WhAn7g/img/9a8165ba6b56f173d96bb229323b4097-1.png",
+  },
+];
+
 // 动画注册
 gsap.registerPlugin(ScrollTrigger, SplitText, ScrollSmoother);
 
 export default function Screen() {
   const [status, setStatus] = useState<number>(0);
   const text_animation_ref = useRef(null);
+  const text_animation_ref_t = useRef(null);
   const img_logo_l = useRef(null);
   const img_logo_r = useRef(null);
   const text_l = useRef(null);
   const text_r = useRef(null);
+  const ballRef = useRef(null);
+  const ballContentRef = useRef(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement[]>([]);
+  const containerRefTwo = useRef<HTMLDivElement>(null);
+  const cardsRefTwo = useRef<HTMLDivElement[]>([]);
 
   useEffect(() => {
     // 初始化 Lenis
@@ -139,7 +178,15 @@ export default function Screen() {
     // 禁用 GSAP 的默认滚动监听
     gsap.ticker.lagSmoothing(0);
 
-    const split = textCharAnimation();
+    const text_data: TextDataType[] = [
+      { trigger: text_animation_ref.current, scrub: 1 },
+      { trigger: text_animation_ref_t.current, scrub: 0 },
+    ];
+
+    const split: any = [];
+    text_data.forEach((item: TextDataType) => {
+      split.push(textCharAnimation(item));
+    });
 
     const ctx = gsap.context(() => {
       const logo_data = [
@@ -169,14 +216,24 @@ export default function Screen() {
         },
       ];
 
+      ballAnimation();
+
       logo_data.forEach((item: gsap.TweenVars, index: number) => {
         logoMergAnimation(item);
       });
+
+      cardStackAnimation();
+
+      cardStackAnimationTwo();
     });
 
     // 清理函数
     return () => {
-      if (split.revert) split.revert();
+      if (split.length) {
+        split.forEach((item: any) => {
+          if (item.revert) split.revert();
+        });
+      }
       ctx.revert();
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
       lenis.destroy();
@@ -184,8 +241,8 @@ export default function Screen() {
   }, []);
 
   // 文字逐一显示动画
-  const textCharAnimation = () => {
-    const split = new SplitText(text_animation_ref.current, {
+  const textCharAnimation = (data: { trigger: any; scrub: number }) => {
+    const split = new SplitText(data.trigger, {
       type: "words,chars", // 分割单词和字符
       wordsClass: "word",
       charsClass: "char",
@@ -205,15 +262,33 @@ export default function Screen() {
       stagger: 0.05,
       ease: "power2.out",
       scrollTrigger: {
-        trigger: text_animation_ref.current,
+        trigger: data.trigger,
         start: "top 80%", // 当元素顶部到达视口80%时开始
         end: "bottom 20%", // 当元素底部到达视口20%时结束
         toggleActions: "play none none reverse", // 播放一次，反向滚动时反向播放
-        scrub: 1,
+        scrub: data.scrub ? 1 : false,
       },
     });
 
     return split;
+  };
+
+  // ball动画
+  const ballAnimation = () => {
+    gsap.to(ballRef.current, {
+      yPercent: 450,
+      scale: 3,
+      duration: 2,
+      stagger: 0.05,
+      ease: "none",
+      scrollTrigger: {
+        trigger: ballContentRef.current,
+        start: "top bottom",
+        end: "bottom top",
+        toggleActions: "play none none reverse", // 播放一次，反向滚动时反向播放
+        scrub: 1,
+      },
+    });
   };
 
   // logo合并分离动画
@@ -242,50 +317,97 @@ export default function Screen() {
 
   // 多张卡片层叠动画
   const cardStackAnimation = () => {
-    const ctx = gsap.context(() => {
-      const cards = cardsRef.current;
+    const cards = cardsRef.current;
 
-      // 为每张卡片创建动画时间轴
-      cards.forEach((card: gsap.TweenTarget, index: number) => {
-        const totalCards = cards.length;
-        const cardHeight = 400; // 卡片高度
-        const overlap = 100; // 卡片重叠距离
+    // 为每张卡片创建动画时间轴
+    cards.forEach((card: gsap.TweenTarget, index: number) => {
+      const totalCards = cards.length;
+      const cardHeight = 400; // 卡片高度
+      const overlap = 200; // 卡片重叠距离
 
-        // 计算开始和结束位置
-        const startPosition = index * (cardHeight - overlap);
-        const endPosition = (index + 1) * (cardHeight - overlap);
+      // 计算开始和结束位置
+      const startPosition = index * (cardHeight - overlap);
+      const endPosition = (index + 1) * (cardHeight - overlap) + 500;
 
-        // 创建卡片的时间轴
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: `top+=${startPosition} center`,
-            end: `top+=${endPosition} center`,
-            scrub: 1,
-            markers: false, // 设为 true 可查看触发区域
-          },
-        });
-
-        // 卡片展开动画
-        tl.fromTo(
-          card,
-          {
-            y: index * 50, // 初始层叠位置
-            scale: 1 - index * 0.1, // 初始缩放
-            rotation: index * 2, // 初始旋转
-            opacity: 0.7 - index * 0.2, // 初始透明度
-            zIndex: totalCards - index, // z-index 控制层叠顺序
-          },
-          {
-            y: 0, // 移动到正常位置
-            scale: 1, // 正常大小
-            rotation: 0, // 无旋转
-            opacity: 1, // 完全显示
-            zIndex: totalCards + index, // 展开时在最上层
-            duration: 1,
-          }
-        );
+      // 创建卡片的时间轴
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: `top+=${startPosition} center`,
+          end: `top+=${endPosition} center`,
+          scrub: 1,
+          markers: false, // 设为 true 可查看触发区域
+        },
       });
+
+      // 卡片展开动画
+      tl.fromTo(
+        card,
+        {
+          y: index * 100, // 初始层叠位置
+          scale: 0.6, // 初始缩放
+          opacity: 0, // 初始透明度
+          zIndex: totalCards - index, // z-index 控制层叠顺序
+        },
+        {
+          y: 0, // 移动到正常位置
+          scale: 1, // 正常大小
+          opacity: 1, // 完全显示
+          zIndex: totalCards - index, // 展开时在最上层
+          duration: 1,
+        }
+      );
+    });
+  };
+
+  // 添加卡片到 ref 数组
+  const addToRefsTwo = useCallback((el: HTMLDivElement | null) => {
+    if (el && !cardsRefTwo.current.includes(el)) {
+      cardsRefTwo.current.push(el);
+    }
+  }, []);
+
+  // 多张卡片层叠动画二
+  const cardStackAnimationTwo = () => {
+    const cards = cardsRefTwo.current;
+
+    // 为每张卡片创建动画时间轴
+    cards.forEach((card: gsap.TweenTarget, index: number) => {
+      const totalCards = cards.length;
+      const cardHeight = 400; // 卡片高度
+      const overlap = 200; // 卡片重叠距离
+
+      // 计算开始和结束位置
+      const startPosition = index * (cardHeight - overlap);
+      const endPosition = (totalCards - index) * (cardHeight - overlap) + 500;
+
+      // 创建卡片的时间轴
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRefTwo.current,
+          start: `top+=${startPosition} center`,
+          end: `top+=${endPosition} center`,
+          scrub: 1,
+          markers: false, // 设为 true 可查看触发区域
+        },
+      });
+
+      // 卡片展开动画
+      tl.fromTo(
+        card,
+        {
+          y: 0, // 初始层叠位置
+          scale: 0.6, // 初始缩放
+          opacity: 1,
+          zIndex: totalCards - index, // z-index 控制层叠顺序
+        },
+        {
+          y: (totalCards - (index + 1)) * 200, // 移动到正常位置
+          scale: 1, // 正常大小
+          zIndex: totalCards - index, // 展开时在最上层
+          duration: 1,
+        }
+      );
     });
   };
   return (
@@ -432,14 +554,20 @@ export default function Screen() {
       </section>
 
       <section className="absolute top-[2925px] left-[50%] translate-x-[-50%] w-210">
-        <h2 className="[font-family:'SF_Pro-Semibold',Helvetica] font-normal text-[#a5adae] text-[56px] text-center tracking-[0] leading-[normal]">
+        <h2
+          ref={text_animation_ref_t}
+          className="[font-family:'SF_Pro-Semibold',Helvetica] font-normal text-[#a5adae] text-[56px] text-center tracking-[0] leading-[normal]"
+        >
           The power of AI is ready. <br />
           The infrastructure to trust it is not.
           <br /> Until now.
         </h2>
       </section>
 
-      <section className="absolute top-[3474px] left-[50%] translate-x-[-50%] w-[1200px] h-[826px]">
+      <section
+        ref={ballContentRef}
+        className="absolute top-[3474px] left-[50%] translate-x-[-50%] w-[1200px] h-[826px]"
+      >
         <div className="absolute top-0 left-0 w-[396px] h-[86px]">
           <h2 className="absolute text-white top-0 left-0 [text-shadow:0px_0px_4px_#00000040] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [font-family:'SF_Pro-Semibold',Helvetica] font-normal  text-4xl text-left">
             The&nbsp;
@@ -486,6 +614,13 @@ export default function Screen() {
           ))}
         </div>
 
+        <Image
+          ref={ballRef}
+          className="z-10 absolute top-[150px] left-[50%] translate-x-[-50%] w-[100px] h-[100px]"
+          alt="ball"
+          src={ball}
+        />
+
         <img
           className="absolute top-[562px] left-px w-[1199px] h-[264px]"
           alt="Frame"
@@ -509,50 +644,51 @@ export default function Screen() {
           alt="Group"
           src="https://c.animaapp.com/mi7lh0u1WhAn7g/img/group-5.png"
         />
-
-        {architectureSteps.map((step, index) => (
-          <div key={index}>
-            <img
-              className={`absolute ${
-                step.top === "top-[4755px]"
-                  ? "top-[372px]"
-                  : step.top === "top-[5020px]"
-                  ? "top-[636px]"
-                  : "top-[902px]"
-              } left-[94px] w-[1012px] h-[216px]`}
-              alt="Vector"
-              src="https://c.animaapp.com/mi7lh0u1WhAn7g/img/vector.svg"
-            />
-            <h3
-              className={`absolute ${
-                step.top === "top-[4755px]"
-                  ? "top-[375px]"
-                  : step.top === "top-[5020px]"
-                  ? "top-[640px]"
-                  : "top-[905px]"
-              } left-[50%] translate-x-[-50%] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap`}
-            >
-              {step.title}
-            </h3>
-            <p
-              className={`absolute ${
-                step.top === "top-[4755px]"
-                  ? "top-[440px]"
-                  : step.top === "top-[5020px]"
-                  ? "top-[705px]"
-                  : "top-[970px]"
-              } left-[50%] translate-x-[-50%] w-[${
-                step.title === "The AI Decision Core"
-                  ? "714px"
-                  : step.title === "The Universal Data Layer"
-                  ? "671px"
-                  : "669px"
-              }] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] text-center tracking-[0] leading-[33px]`}
-            >
-              {step.description}
-            </p>
-          </div>
-        ))}
+        <div ref={containerRef} className="cards-scroll-section">
+          {architectureSteps.map((step, index) => (
+            <div ref={addToRefs} key={index}>
+              <img
+                className={`absolute ${
+                  step.top === "top-[4755px]"
+                    ? "top-[372px]"
+                    : step.top === "top-[5020px]"
+                    ? "top-[636px]"
+                    : "top-[902px]"
+                } left-[94px] w-[1012px] h-[216px]`}
+                alt="Vector"
+                src="https://c.animaapp.com/mi7lh0u1WhAn7g/img/vector.svg"
+              />
+              <h3
+                className={`absolute ${
+                  step.top === "top-[4755px]"
+                    ? "top-[375px]"
+                    : step.top === "top-[5020px]"
+                    ? "top-[640px]"
+                    : "top-[905px]"
+                } left-[50%] translate-x-[-50%] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap`}
+              >
+                {step.title}
+              </h3>
+              <p
+                className={`absolute ${
+                  step.top === "top-[4755px]"
+                    ? "top-[440px]"
+                    : step.top === "top-[5020px]"
+                    ? "top-[705px]"
+                    : "top-[970px]"
+                } left-[50%] translate-x-[-50%] w-[${
+                  step.title === "The AI Decision Core"
+                    ? "714px"
+                    : step.title === "The Universal Data Layer"
+                    ? "671px"
+                    : "669px"
+                }] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] text-center tracking-[0] leading-[33px]`}
+              >
+                {step.description}
+              </p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="absolute top-[5657px] left-[50%] translate-x-[-50%] w-[1200px]">
@@ -565,39 +701,40 @@ export default function Screen() {
           market participants.
         </p>
 
-        <Card className="absolute top-[172px] left-[100px] w-[1000px] h-[400px] rounded-[20px] shadow-[0px_9.66px_38.62px_#61e4fa1f] bg-[linear-gradient(0deg,rgba(21,25,26,1)_0%,rgba(21,25,26,1)_100%),linear-gradient(47deg,rgba(97,228,250,0.03)_0%,rgba(217,217,217,0.03)_100%)] border-0">
-          <CardContent className="p-8 relative h-full">
-            <h3 className="bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap">
-              For Institutions & Funds
-            </h3>
+        <div ref={containerRefTwo}>
+          {cardInfoSteps.map((item, index) => (
+            <Card
+              ref={addToRefsTwo}
+              key={index}
+              className="absolute opacity-1 top-[172px] left-[100px] w-[1000px] h-[400px] rounded-[20px] shadow-[0px_9.66px_38.62px_#61e4fa1f] bg-[linear-gradient(0deg,rgba(21,25,26,1)_0%,rgba(21,25,26,1)_100%),linear-gradient(47deg,rgba(97,228,250,0.03)_0%,rgba(217,217,217,0.03)_100%)] border-0"
+            >
+              <CardContent className="p-8 relative h-full">
+                <h3 className="bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap">
+                  {item.title}
+                </h3>
 
-            <p className="mt-[9px] w-[480px] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
-              A Framework for Compliance and Scale.
-            </p>
+                <p className="mt-[9px] w-[480px] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
+                  {item.description}
+                </p>
 
-            <Button className="absolute top-[201px] left-8 px-[18px] py-3.5 h-auto bg-[linear-gradient(90deg,rgba(194,203,205,1)_0%,rgba(237,249,251,1)_50%,rgba(198,208,209,1)_100%)] hover:opacity-90 transition-opacity rounded-2xl">
-              <span className="[font-family:'SF_Pro-Bold',Helvetica] font-bold text-[#15191a] text-base text-center tracking-[0] leading-4 whitespace-nowrap">
-                Schedule An Enterprise Demo
-              </span>
-            </Button>
+                <Button className="absolute top-[201px] left-8 px-[18px] py-3.5 h-auto bg-[linear-gradient(90deg,rgba(194,203,205,1)_0%,rgba(237,249,251,1)_50%,rgba(198,208,209,1)_100%)] hover:opacity-90 transition-opacity rounded-2xl">
+                  <span className="[font-family:'SF_Pro-Bold',Helvetica] font-bold text-[#15191a] text-base text-center tracking-[0] leading-4 whitespace-nowrap">
+                    {item.btn_text}
+                  </span>
+                </Button>
 
-            <p className="absolute top-[269px] left-8 w-[936px] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
-              Stop building brittle infrastructure. Plug your proprietary models
-              into Neberu. Move from an untrusted black box to a fully
-              auditable, compliant, and scalable system. Manage risk, ensure
-              compliance, and deploy AI-driven strategies with confidence.
-            </p>
+                <p className="absolute top-[269px] left-8 w-[936px] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
+                  {item.info}
+                </p>
 
-            <div className="absolute top-2 left-[592px] w-[400px] h-[225px]">
-              <img
-                className="w-full h-full"
-                alt="Img"
-                src="https://c.animaapp.com/mi7lh0u1WhAn7g/img/9a8165ba6b56f173d96bb229323b4097-1.png"
-              />
-              <div className="absolute top-0 left-0 w-full h-full rounded-[20px] [background:radial-gradient(50%_50%_at_50%_50%,rgba(21,25,26,0)_0%,rgba(21,25,26,1)_100%)]" />
-            </div>
-          </CardContent>
-        </Card>
+                <div className="absolute top-2 left-[592px] w-[400px] h-[225px]">
+                  <img className="w-full h-full" alt="Img" src={item.img_src} />
+                  <div className="absolute top-0 left-0 w-full h-full rounded-[20px] [background:radial-gradient(50%_50%_at_50%_50%,rgba(21,25,26,0)_0%,rgba(21,25,26,1)_100%)]" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
 
       <section className="absolute top-[6477px] bg-[url('https://c.animaapp.com/mi7lh0u1WhAn7g/img/group.png')] bg-size-[80%] left-0 w-[100%] h-[900px] bg-[#15191a]">
