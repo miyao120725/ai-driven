@@ -5,6 +5,19 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+// 缩进和空格规则
+      'indent': ['error', 2],
+      'no-tabs': 'error',
+      'no-mixed-spaces-and-tabs': 'error',
+      'no-trailing-spaces': 'error',
+      'space-before-function-paren': ['error', {
+        anonymous: 'always',
+        named: 'never',
+        asyncArrow: 'always'
+      }],
+      'object-curly-spacing': ['error', 'always'],
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

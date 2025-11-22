@@ -1,8 +1,7 @@
-
 @import url("https://fonts.googleapis.com/css?family=Inter:400");
 :root {
-  --background: #15191A;
-  --foreground: #FFFFFF;
+  --background: #15191a;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -17,6 +16,12 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+html,
+body {
+  overflow: hidden;
+  height: auto;
 }
 
 /* body {

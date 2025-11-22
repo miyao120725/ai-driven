@@ -1,12 +1,19 @@
 "use client"; // Add this at the very top of your file
-import React, { useEffect, useRef, useState } from "react";
-import Image from 'next/image';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
+import gsap from "gsap";
+import Lenis from "lenis";
+import { SplitText } from "gsap/SplitText";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrollSmoother } from "gsap/ScrollSmoother";
 import { Button } from "@components/ui/button";
 import { Card, CardContent } from "@components/ui/card";
 import { Input } from "@components/ui/input";
 
-import bg_circle from "@assets/img/bg-01.svg"
+import bg_circle from "@assets/img/bg-01.svg";
 import logo from "@assets/img/logo.svg";
+import logo_l from "@assets/img/logo_l.svg";
+import logo_r from "@assets/img/logo_r.svg";
 const navItems = [
   { label: "Home", active: true },
   { label: "Problem", active: false },
@@ -100,24 +107,194 @@ const architectureSteps = [
     top: "top-[5285px]",
   },
 ];
+// 动画注册
+gsap.registerPlugin(ScrollTrigger, SplitText, ScrollSmoother);
 
 export default function Screen() {
-  const [status,setStatus] = useState<number>(0);
-  const num = useRef(0)
-  
-  useEffect(()=>{
-    setInterval(()=>{
-      num.current++;
-      setStatus(num.current);
-    },2000)
-  },[])
+  const [status, setStatus] = useState<number>(0);
+  const text_animation_ref = useRef(null);
+  const img_logo_l = useRef(null);
+  const img_logo_r = useRef(null);
+  const text_l = useRef(null);
+  const text_r = useRef(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement[]>([]);
+
+  useEffect(() => {
+    // 初始化 Lenis
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    });
+
+    // 连接 Lenis 和 ScrollTrigger
+    lenis.on("scroll", ScrollTrigger.update);
+
+    // 在 RAF 中更新
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+    });
+
+    // 禁用 GSAP 的默认滚动监听
+    gsap.ticker.lagSmoothing(0);
+
+    const split = textCharAnimation();
+
+    const ctx = gsap.context(() => {
+      const logo_data = [
+        {
+          trigger: img_logo_l.current,
+          xPercent: 84,
+          duration: 2,
+          stagger: 0.05,
+        },
+        {
+          trigger: img_logo_r.current,
+          xPercent: -84,
+          duration: 2,
+          stagger: 0.05,
+        },
+        {
+          trigger: text_l.current,
+          xPercent: 264,
+          duration: 1,
+          stagger: 0.1,
+        },
+        {
+          trigger: text_r.current,
+          xPercent: -166,
+          duration: 1,
+          stagger: 0.1,
+        },
+      ];
+
+      logo_data.forEach((item: gsap.TweenVars, index: number) => {
+        logoMergAnimation(item);
+      });
+    });
+
+    // 清理函数
+    return () => {
+      if (split.revert) split.revert();
+      ctx.revert();
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
+      lenis.destroy();
+    };
+  }, []);
+
+  // 文字逐一显示动画
+  const textCharAnimation = () => {
+    const split = new SplitText(text_animation_ref.current, {
+      type: "words,chars", // 分割单词和字符
+      wordsClass: "word",
+      charsClass: "char",
+    });
+
+    // 设置初始状态
+    gsap.set(split.chars, {
+      opacity: 0,
+      color: "red", // 起始颜色
+    });
+
+    // 创建滚动触发动画
+    gsap.to(split.chars, {
+      opacity: 1,
+      color: "#fff",
+      duration: 0.8,
+      stagger: 0.05,
+      ease: "power2.out",
+      scrollTrigger: {
+        trigger: text_animation_ref.current,
+        start: "top 80%", // 当元素顶部到达视口80%时开始
+        end: "bottom 20%", // 当元素底部到达视口20%时结束
+        toggleActions: "play none none reverse", // 播放一次，反向滚动时反向播放
+        scrub: 1,
+      },
+    });
+
+    return split;
+  };
+
+  // logo合并分离动画
+  const logoMergAnimation = (data: gsap.TweenVars) => {
+    gsap.to(data.trigger, {
+      xPercent: data.xPercent,
+      duration: data.duration,
+      stagger: data.stagger,
+      ease: "none",
+      scrollTrigger: {
+        trigger: data.trigger,
+        start: "top bottom",
+        end: "center center",
+        // toggleActions: "play none none reverse", // 播放一次，反向滚动时反向播放
+        scrub: 1,
+      },
+    });
+  };
+
+  // 添加卡片到 ref 数组
+  const addToRefs = useCallback((el: HTMLDivElement | null) => {
+    if (el && !cardsRef.current.includes(el)) {
+      cardsRef.current.push(el);
+    }
+  }, []);
+
+  // 多张卡片层叠动画
+  const cardStackAnimation = () => {
+    const ctx = gsap.context(() => {
+      const cards = cardsRef.current;
+
+      // 为每张卡片创建动画时间轴
+      cards.forEach((card: gsap.TweenTarget, index: number) => {
+        const totalCards = cards.length;
+        const cardHeight = 400; // 卡片高度
+        const overlap = 100; // 卡片重叠距离
+
+        // 计算开始和结束位置
+        const startPosition = index * (cardHeight - overlap);
+        const endPosition = (index + 1) * (cardHeight - overlap);
+
+        // 创建卡片的时间轴
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: `top+=${startPosition} center`,
+            end: `top+=${endPosition} center`,
+            scrub: 1,
+            markers: false, // 设为 true 可查看触发区域
+          },
+        });
+
+        // 卡片展开动画
+        tl.fromTo(
+          card,
+          {
+            y: index * 50, // 初始层叠位置
+            scale: 1 - index * 0.1, // 初始缩放
+            rotation: index * 2, // 初始旋转
+            opacity: 0.7 - index * 0.2, // 初始透明度
+            zIndex: totalCards - index, // z-index 控制层叠顺序
+          },
+          {
+            y: 0, // 移动到正常位置
+            scale: 1, // 正常大小
+            rotation: 0, // 无旋转
+            opacity: 1, // 完全显示
+            zIndex: totalCards + index, // 展开时在最上层
+            duration: 1,
+          }
+        );
+      });
+    });
+  };
   return (
     <div
       className="pt-5 bg-[#15191a] overflow-hidden w-full min-w-[1000px] min-h-[8278px] relative"
       data-model-id="1:2"
     >
       <Image
-        className="absolute top-0 left-0 w-[1440px] h-[2002px]"
+        className="absolute top-0 left-[50%] translate-x-[-50%] w-[1440px] h-[2002px]"
         alt="Ellipse"
         src={bg_circle}
       />
@@ -125,11 +302,7 @@ export default function Screen() {
       <nav className="flex flex-col items-start gap-2.5 pl-4 pr-4 py-2 absolute top-8 translate-[-50%] left-[50%] h-[60px] rounded-[20px] shadow-[0px_9.66px_38.62px_#61e4fa1f] z-10 bg-[linear-gradient(47deg,rgba(97,228,250,0.06)_0%,rgba(217,217,217,0.06)_100%)] translate-y-[-1rem] animate-fade-in opacity-0">
         <div className="inline-flex items-center gap-8 relative flex-[0_0_auto] mr-[-8.00px]">
           <div className="relative w-32 h-6">
-            <Image
-              className="w-32 h-6"
-              alt="Vector"
-              src={logo}
-            />
+            <Image className="w-32 h-6" alt="Vector" src={logo} />
             {/* <div className="top-0 left-[58px] w-[70px] [font-family:'Inter',Helvetica] text-white text-[19.9px] absolute font-normal tracking-[0] leading-[normal]">
               Neberu
             </div> */}
@@ -241,10 +414,10 @@ export default function Screen() {
               <CardContent className="p-8 flex flex-col h-full">
                 <div className="text-right flex justify-end align-middle">
                   <img
-                  className="w-[222px] h-[195px] mb-6"
-                  alt="Frame"
-                  src={card.image}
-                />
+                    className="w-[222px] h-[195px] mb-6"
+                    alt="Frame"
+                    src={card.image}
+                  />
                 </div>
                 <h3 className="bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap mb-4">
                   {card.title}
@@ -269,14 +442,14 @@ export default function Screen() {
       <section className="absolute top-[3474px] left-[50%] translate-x-[-50%] w-[1200px] h-[826px]">
         <div className="absolute top-0 left-0 w-[396px] h-[86px]">
           <h2 className="absolute text-white top-0 left-0 [text-shadow:0px_0px_4px_#00000040] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [font-family:'SF_Pro-Semibold',Helvetica] font-normal  text-4xl text-left">
-            The&nbsp; 
+            The&nbsp;
             <span className="[text-shadow:0px_0px_6px_#61e4fa] [font-family:'SF_Pro-Semibold',Helvetica] text-[#61e4fa] text-4xl text-center font-normal">
-            Neberu
-          </span>&nbsp;Philosophy: 
-          <br />
+              Neberu
+            </span>
+            &nbsp;Philosophy:
+            <br />
             Delegate, not surrender
           </h2>
-         
         </div>
 
         <p className="absolute top-[100px] left-0 w-[1015px] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
@@ -286,30 +459,30 @@ export default function Screen() {
 
         <div className="absolute top-[271px] left-0 flex gap-[61px]">
           {philosophyColumns.map((column, index) => (
-            <>
-            <div
-              key={index}
-              className="flex flex-col items-start gap-8"
-              style={{
-                maxWidth: index === 2 ? "346px" : index === 1 ? "275px" : "282px",
-              }}
-            >
-              <div className="flex flex-col items-start gap-2">
-                <h3 className="bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal]">
-                  {column.title}
-                </h3>
+            <div className="flex  gap-[61px]" key={index}>
+              <div
+                className="flex flex-col items-start gap-8"
+                style={{
+                  maxWidth:
+                    index === 2 ? "346px" : index === 1 ? "275px" : "282px",
+                }}
+              >
+                <div className="flex flex-col items-start gap-2">
+                  <h3 className="bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal]">
+                    {column.title}
+                  </h3>
+                  <p className="[font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
+                    {column.subtitle}
+                  </p>
+                </div>
                 <p className="[font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
-                  {column.subtitle}
+                  {column.description}
                 </p>
               </div>
-              <p className="[font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] tracking-[0] leading-[33px]">
-                {column.description}
-              </p>
+              {index < 2 ? (
+                <div className="w-px h-[229px] bg-[linear-gradient(180deg,rgba(21,25,26,1)_0%,rgba(165,165,165,1)_46%,rgba(21,25,26,1)_100%)]" />
+              ) : null}
             </div>
-            {
-              index<2?<div className="w-px h-[229px] bg-[linear-gradient(180deg,rgba(21,25,26,1)_0%,rgba(165,165,165,1)_46%,rgba(21,25,26,1)_100%)]" />:null
-            }
-            </>
           ))}
         </div>
 
@@ -340,17 +513,41 @@ export default function Screen() {
         {architectureSteps.map((step, index) => (
           <div key={index}>
             <img
-              className={`absolute ${step.top === "top-[4755px]" ? "top-[372px]" : step.top === "top-[5020px]" ? "top-[636px]" : "top-[902px]"} left-[94px] w-[1012px] h-[216px]`}
+              className={`absolute ${
+                step.top === "top-[4755px]"
+                  ? "top-[372px]"
+                  : step.top === "top-[5020px]"
+                  ? "top-[636px]"
+                  : "top-[902px]"
+              } left-[94px] w-[1012px] h-[216px]`}
               alt="Vector"
               src="https://c.animaapp.com/mi7lh0u1WhAn7g/img/vector.svg"
             />
             <h3
-              className={`absolute ${step.top === "top-[4755px]" ? "top-[375px]" : step.top === "top-[5020px]" ? "top-[640px]" : "top-[905px]"} left-[50%] translate-x-[-50%] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap`}
+              className={`absolute ${
+                step.top === "top-[4755px]"
+                  ? "top-[375px]"
+                  : step.top === "top-[5020px]"
+                  ? "top-[640px]"
+                  : "top-[905px]"
+              } left-[50%] translate-x-[-50%] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-[28px] tracking-[0] leading-[normal] whitespace-nowrap`}
             >
               {step.title}
             </h3>
             <p
-              className={`absolute ${step.top === "top-[4755px]" ? "top-[440px]" : step.top === "top-[5020px]" ? "top-[705px]" : "top-[970px]"} left-[50%] translate-x-[-50%] w-[${step.title === "The AI Decision Core" ? "714px" : step.title === "The Universal Data Layer" ? "671px" : "669px"}] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] text-center tracking-[0] leading-[33px]`}
+              className={`absolute ${
+                step.top === "top-[4755px]"
+                  ? "top-[440px]"
+                  : step.top === "top-[5020px]"
+                  ? "top-[705px]"
+                  : "top-[970px]"
+              } left-[50%] translate-x-[-50%] w-[${
+                step.title === "The AI Decision Core"
+                  ? "714px"
+                  : step.title === "The Universal Data Layer"
+                  ? "671px"
+                  : "669px"
+              }] [font-family:'SF_Pro-Regular',Helvetica] font-normal text-[#a8b0b2] text-[22px] text-center tracking-[0] leading-[33px]`}
             >
               {step.description}
             </p>
@@ -404,7 +601,6 @@ export default function Screen() {
       </section>
 
       <section className="absolute top-[6477px] bg-[url('https://c.animaapp.com/mi7lh0u1WhAn7g/img/group.png')] bg-size-[80%] left-0 w-[100%] h-[900px] bg-[#15191a]">
-        
         <h2 className="absolute w-[47.99%] h-[4.78%] top-[8.89%] left-[50%] translate-x-[-50%] [text-shadow:0px_0px_4px_#00000040] bg-[linear-gradient(90deg,rgba(149,156,157,1)_0%,rgba(240,253,255,1)_51%,rgba(149,156,157,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'SF_Pro-Semibold',Helvetica] font-normal text-transparent text-4xl tracking-[0] leading-[normal] whitespace-nowrap">
           More Than a Platform. An Evolving Standard
         </h2>
@@ -414,26 +610,44 @@ export default function Screen() {
           </span>
         </div>
 
-        <p className="absolute w-[56.11%] h-[14.00%] top-[47.11%] left-[21.94%] [font-family:'SF_Pro-Medium',Helvetica] font-medium text-[28px] text-center tracking-[0] leading-[42px]">
-          <span className="text-[#e6f1f0]">
-            A "strategy economy" built on our framework.{" "}
-          </span>
-          <span className="text-[#a5adae80]">
-            Define your strategy, run it on your capital, or monetize it by
-            letting others subscribe. The framework is the trust layer for all
-            participants.
-          </span>
+        <p
+          ref={text_animation_ref}
+          className="text-[#a5adae80] absolute w-[56.11%] h-[14.00%] top-[47.11%] left-[21.94%] [font-family:'SF_Pro-Medium',Helvetica] font-medium text-[28px] text-center tracking-[0] leading-[42px]"
+        >
+          A "strategy economy" built on our framework. Define your strategy, run
+          it on your capital, or monetize it by letting others subscribe. The
+          framework is the trust layer for all participants.
         </p>
       </section>
-
-      <div className="absolute top-[7497px] left-[50%] translate-x-[-50%] w-[260px] h-[180px]">
-        <img
-          className="absolute top-0 left-[7px] w-[246px] h-[77px]"
+      <div
+        style={{
+          willChange: "transform", // 性能优化
+        }}
+        className="absolute top-[7497px] left-[50%] translate-x-[-50%] w-[260px] h-[180px]"
+      >
+        <Image
+          ref={img_logo_l}
+          className="absolute top-0 left-[-50%] w-40 h-[77px]"
           alt="Group"
-          src="https://c.animaapp.com/mi7lh0u1WhAn7g/img/group-22.png"
+          src={logo_r}
         />
-        <div className="w-[99.23%] h-[49.26%] top-[50.74%] left-0 [font-family:'Inter',Helvetica] text-white text-[73.5px] absolute font-normal tracking-[0] leading-[normal]">
-          Neberu
+        <div
+          ref={text_l}
+          className="h-[49.26%] top-[50.74%] left-[-100%] [font-family:'Inter',Helvetica] text-white text-[73.5px] absolute font-normal tracking-[0] leading-[normal]"
+        >
+          Ne
+        </div>
+        <Image
+          ref={img_logo_r}
+          className="absolute top-0 right-[-50%] w-40 h-[77px]"
+          alt="Group"
+          src={logo_l}
+        />
+        <div
+          ref={text_r}
+          className="h-[49.26%] top-[50.74%] right-[-100%] [font-family:'Inter',Helvetica] text-white text-[73.5px] absolute font-normal tracking-[0] leading-[normal]"
+        >
+          beru
         </div>
       </div>
 
@@ -483,4 +697,4 @@ export default function Screen() {
       </footer>
     </div>
   );
-};
+}
